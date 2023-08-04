@@ -419,6 +419,12 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 	}
 
 	compute := t.newContainerSpecRenderer(vmi, volumeRenderer, resources, userId).Render(command)
+	// TODO (dharmit): remove hard-coded for sidecar hook POC
+	compute.VolumeMounts = append(compute.VolumeMounts, k8sv1.VolumeMount{
+		Name:      "my-config-map",
+		MountPath: "/opt/my-config-map",
+	},
+	)
 
 	for networkName, resourceName := range networkToResourceMap {
 		varName := fmt.Sprintf("KUBEVIRT_RESOURCE_NAME_%s", networkName)
@@ -602,6 +608,25 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 		pod.Spec.AutomountServiceAccountToken = &automount
 	}
 
+	// TODO (dharmit): remove hard-coded for sidecar hook PoC
+	{
+		cm, err := t.virtClient.CoreV1().ConfigMaps(vmi.Namespace).Get(context.TODO(), "my-config-map", metav1.GetOptions{})
+		if err != nil {
+			log.Log.Error(err.Error())
+			panic(err)
+		}
+		volumeSource := k8sv1.VolumeSource{
+			ConfigMap: &k8sv1.ConfigMapVolumeSource{
+				LocalObjectReference: k8sv1.LocalObjectReference{Name: cm.Name},
+			},
+		}
+		vol := k8sv1.Volume{
+			Name:         cm.Name,
+			VolumeSource: volumeSource,
+		}
+		pod.Spec.Volumes = append(pod.Spec.Volumes, vol)
+	}
+
 	return &pod, nil
 }
 
@@ -643,7 +668,10 @@ func initContainerVolumeMount() k8sv1.VolumeMount {
 func newSidecarContainerRenderer(sidecarName string, vmiSpec *v1.VirtualMachineInstance, resources k8sv1.ResourceRequirements, requestedHookSidecar hooks.HookSidecar, userId int64) *ContainerSpecRenderer {
 	sidecarOpts := []Option{
 		WithResourceRequirements(resources),
-		WithVolumeMounts(sidecarVolumeMount()),
+		WithVolumeMounts(sidecarVolumeMount(), k8sv1.VolumeMount{
+			Name:      "my-config-map",
+			MountPath: "/opt/my-config-map",
+		}),
 		WithArgs(requestedHookSidecar.Args),
 	}
 
