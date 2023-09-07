@@ -66,12 +66,11 @@ type v1alpha2Server struct{}
 func (s v1alpha2Server) OnDefineDomain(ctx context.Context, params *hooksV1alpha2.OnDefineDomainParams) (*hooksV1alpha2.OnDefineDomainResult, error) {
 	log.Log.Info(onDefineDomainLoggingMessage)
 	//newDomainXML, err := onDefineDomain(params.GetVmi(), params.GetDomainXML())
-	newDomainXML, err := exec.Command("/bin/bash", "/opt/my-config-map/my_script.sh", string(params.GetDomainXML())).Output()
+	newDomainXML, err := exec.Command("/bin/bash", "/opt/my-config-map/my_script.sh", string(params.GetVmi()), string(params.GetDomainXML())).Output()
 	if err != nil {
 		log.Log.Error(err.Error())
 		return nil, err
 	}
-	log.Log.Info(string(newDomainXML))
 	return &hooksV1alpha2.OnDefineDomainResult{
 		DomainXML: newDomainXML,
 	}, nil
