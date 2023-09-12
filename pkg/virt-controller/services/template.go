@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -419,12 +420,6 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 	}
 
 	compute := t.newContainerSpecRenderer(vmi, volumeRenderer, resources, userId).Render(command)
-	// TODO (dharmit): remove hard-coded for sidecar hook POC
-	compute.VolumeMounts = append(compute.VolumeMounts, k8sv1.VolumeMount{
-		Name:      "my-config-map",
-		MountPath: "/opt/my-config-map",
-	},
-	)
 
 	for networkName, resourceName := range networkToResourceMap {
 		varName := fmt.Sprintf("KUBEVIRT_RESOURCE_NAME_%s", networkName)
@@ -487,11 +482,30 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 		containers = append(containers, *sconsolelogContainer)
 	}
 
+	var sidecarVolumes []k8sv1.Volume
 	for i, requestedHookSidecar := range requestedHookSidecarList {
-		containers = append(
-			containers,
-			newSidecarContainerRenderer(
-				sidecarContainerName(i), vmi, sidecarResources(vmi, t.clusterConfig), requestedHookSidecar, userId).Render(requestedHookSidecar.Command))
+		sidecarContainer := newSidecarContainerRenderer(
+			sidecarContainerName(i), vmi, sidecarResources(vmi, t.clusterConfig), requestedHookSidecar, userId).Render(requestedHookSidecar.Command)
+
+		if !reflect.DeepEqual(requestedHookSidecar.ConfigMap, hooks.ConfigMap{}) {
+			cm, err := t.virtClient.CoreV1().ConfigMaps(vmi.Namespace).Get(context.TODO(), requestedHookSidecar.ConfigMap.Name, metav1.GetOptions{})
+			if err != nil {
+				log.Log.Error(err.Error())
+				panic(err)
+			}
+			volumeSource := k8sv1.VolumeSource{
+				ConfigMap: &k8sv1.ConfigMapVolumeSource{
+					LocalObjectReference: k8sv1.LocalObjectReference{Name: cm.Name},
+					DefaultMode:          pointer.Int32(0777),
+				},
+			}
+			vol := k8sv1.Volume{
+				Name:         cm.Name,
+				VolumeSource: volumeSource,
+			}
+			sidecarVolumes = append(sidecarVolumes, vol)
+		}
+		containers = append(containers, sidecarContainer)
 	}
 
 	podAnnotations, err := generatePodAnnotations(vmi)
@@ -608,24 +622,7 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 		pod.Spec.AutomountServiceAccountToken = &automount
 	}
 
-	// TODO (dharmit): remove hard-coded for sidecar hook PoC
-	{
-		cm, err := t.virtClient.CoreV1().ConfigMaps(vmi.Namespace).Get(context.TODO(), "my-config-map", metav1.GetOptions{})
-		if err != nil {
-			log.Log.Error(err.Error())
-			panic(err)
-		}
-		volumeSource := k8sv1.VolumeSource{
-			ConfigMap: &k8sv1.ConfigMapVolumeSource{
-				LocalObjectReference: k8sv1.LocalObjectReference{Name: cm.Name},
-			},
-		}
-		vol := k8sv1.Volume{
-			Name:         cm.Name,
-			VolumeSource: volumeSource,
-		}
-		pod.Spec.Volumes = append(pod.Spec.Volumes, vol)
-	}
+	pod.Spec.Volumes = append(pod.Spec.Volumes, sidecarVolumes...)
 
 	return &pod, nil
 }
@@ -668,11 +665,13 @@ func initContainerVolumeMount() k8sv1.VolumeMount {
 func newSidecarContainerRenderer(sidecarName string, vmiSpec *v1.VirtualMachineInstance, resources k8sv1.ResourceRequirements, requestedHookSidecar hooks.HookSidecar, userId int64) *ContainerSpecRenderer {
 	sidecarOpts := []Option{
 		WithResourceRequirements(resources),
-		WithVolumeMounts(sidecarVolumeMount(), k8sv1.VolumeMount{
-			Name:      "my-config-map",
-			MountPath: "/opt/my-config-map",
-		}),
 		WithArgs(requestedHookSidecar.Args),
+	}
+
+	if !reflect.DeepEqual(requestedHookSidecar.ConfigMap, hooks.ConfigMap{}) {
+		sidecarOpts = append(sidecarOpts, WithVolumeMounts(sidecarVolumeMount(), configMapVolumeMount(requestedHookSidecar.ConfigMap, "hookscript")))
+	} else {
+		sidecarOpts = append(sidecarOpts, WithVolumeMounts(sidecarVolumeMount()))
 	}
 
 	if util.IsNonRootVMI(vmiSpec) {
@@ -792,6 +791,14 @@ func sidecarVolumeMount() k8sv1.VolumeMount {
 	return k8sv1.VolumeMount{
 		Name:      hookSidecarSocks,
 		MountPath: hooks.HookSocketsSharedDirectory,
+	}
+}
+
+func configMapVolumeMount(v hooks.ConfigMap, name string) k8sv1.VolumeMount {
+	return k8sv1.VolumeMount{
+		Name:      v.Name,
+		MountPath: fmt.Sprintf("/opt/%s", name),
+		SubPath:   v.Key,
 	}
 }
 

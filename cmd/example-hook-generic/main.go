@@ -65,8 +65,7 @@ type v1alpha2Server struct{}
 
 func (s v1alpha2Server) OnDefineDomain(ctx context.Context, params *hooksV1alpha2.OnDefineDomainParams) (*hooksV1alpha2.OnDefineDomainResult, error) {
 	log.Log.Info(onDefineDomainLoggingMessage)
-	//newDomainXML, err := onDefineDomain(params.GetVmi(), params.GetDomainXML())
-	newDomainXML, err := exec.Command("/bin/bash", "/opt/my-config-map/my_script.sh", string(params.GetVmi()), string(params.GetDomainXML())).Output()
+	newDomainXML, err := exec.Command("/opt/hookscript", string(params.GetVmi()), string(params.GetDomainXML())).Output()
 	if err != nil {
 		log.Log.Error(err.Error())
 		return nil, err
@@ -83,7 +82,7 @@ func (s v1alpha2Server) PreCloudInitIso(ctx context.Context, params *hooksV1alph
 }
 
 func main() {
-	log.InitializeLogging("smbios-hook-sidecar")
+	log.InitializeLogging("generic-hook-sidecar")
 
 	var version string
 	pflag.StringVar(&version, "version", "", "hook version to use")

@@ -3,8 +3,9 @@ apiVersion: kubevirt.io/v1
 kind: VirtualMachineInstance
 metadata:
   annotations:
-    hooks.kubevirt.io/hookSidecars: '[{"args": ["--version", "v1alpha2"], "image":
-      "registry:5000/kubevirt/example-hook-generic:devel"}]'
+    hooks.kubevirt.io/hookSidecars: '[{"args": ["--version", "v1alpha2"],
+      "image": "registry:5000/kubevirt/example-hook-generic:devel",
+      "configMap": {"name": "my-config-map", "key": "my_script.sh"}}]'
   labels:
     special: vmi-with-generic-hook
   name: vmi-with-generic-hook
