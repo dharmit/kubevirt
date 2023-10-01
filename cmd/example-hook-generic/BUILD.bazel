@@ -32,7 +32,7 @@ container_image(
     directory = "/",
     files = ["//:get-version"],
     tars = [
-        "//rpm:libguestfs-tools",  # TODO: prepare our own layer with bash instead of using this
+        "//rpm:generic-sidecar",
     ],
 )
 
