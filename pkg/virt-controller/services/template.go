@@ -490,8 +490,7 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, i
 		if !reflect.DeepEqual(requestedHookSidecar.ConfigMap, hooks.ConfigMap{}) {
 			cm, err := t.virtClient.CoreV1().ConfigMaps(vmi.Namespace).Get(context.TODO(), requestedHookSidecar.ConfigMap.Name, metav1.GetOptions{})
 			if err != nil {
-				log.Log.Error(err.Error())
-				panic(err)
+				return nil, err
 			}
 			volumeSource := k8sv1.VolumeSource{
 				ConfigMap: &k8sv1.ConfigMapVolumeSource{
