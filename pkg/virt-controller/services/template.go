@@ -796,7 +796,7 @@ func sidecarVolumeMount() k8sv1.VolumeMount {
 func configMapVolumeMount(v hooks.ConfigMap, name string) k8sv1.VolumeMount {
 	return k8sv1.VolumeMount{
 		Name:      v.Name,
-		MountPath: fmt.Sprintf("/opt/%s", name),
+		MountPath: "/usr/bin/onDefineDomain",
 		SubPath:   v.Key,
 	}
 }

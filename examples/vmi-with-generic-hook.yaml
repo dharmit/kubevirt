@@ -4,7 +4,7 @@ kind: VirtualMachineInstance
 metadata:
   annotations:
     hooks.kubevirt.io/hookSidecars: '[{"args": ["--version", "v1alpha2"],
-      "image": "registry:5000/kubevirt/example-hook-generic:devel",
+      "image": "registry:5000/kubevirt/sidecar-shim:devel",
       "configMap": {"name": "my-config-map", "key": "my_script.sh"}}]'
   labels:
     special: vmi-with-generic-hook

@@ -4327,7 +4327,7 @@ var _ = Describe("Template", func() {
 						},
 					}))
 					Expect(pod.Spec.Containers[1].VolumeMounts).To(ContainElement(kubev1.VolumeMount{
-						MountPath: "/opt/hookscript",
+						MountPath: "/usr/bin/onDefineDomain",
 						Name:      "test-cm",
 						SubPath:   "script.sh",
 					}))
