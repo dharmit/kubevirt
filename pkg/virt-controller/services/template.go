@@ -668,7 +668,7 @@ func newSidecarContainerRenderer(sidecarName string, vmiSpec *v1.VirtualMachineI
 	}
 
 	if !reflect.DeepEqual(requestedHookSidecar.ConfigMap, hooks.ConfigMap{}) {
-		sidecarOpts = append(sidecarOpts, WithVolumeMounts(sidecarVolumeMount(), configMapVolumeMount(requestedHookSidecar.ConfigMap, "hookscript")))
+		sidecarOpts = append(sidecarOpts, WithVolumeMounts(sidecarVolumeMount(), configMapVolumeMount(requestedHookSidecar.ConfigMap)))
 	} else {
 		sidecarOpts = append(sidecarOpts, WithVolumeMounts(sidecarVolumeMount()))
 	}
@@ -793,7 +793,7 @@ func sidecarVolumeMount() k8sv1.VolumeMount {
 	}
 }
 
-func configMapVolumeMount(v hooks.ConfigMap, name string) k8sv1.VolumeMount {
+func configMapVolumeMount(v hooks.ConfigMap) k8sv1.VolumeMount {
 	return k8sv1.VolumeMount{
 		Name:      v.Name,
 		MountPath: "/usr/bin/onDefineDomain",

@@ -4300,7 +4300,6 @@ var _ = Describe("Template", func() {
 			When("ConfigMap exists on the cluster", func() {
 				BeforeEach(func() {
 					k8sClient := k8sfake.NewSimpleClientset()
-					//virtClient.EXPECT().CoreV1().Return(cm).MaxTimes(1)
 					k8sClient.Fake.PrependReactor("get", "configmaps", func(action testing.Action) (handled bool, obj k8sruntime.Object, err error) {
 						cm := kubev1.ConfigMap{
 							ObjectMeta: metav1.ObjectMeta{
